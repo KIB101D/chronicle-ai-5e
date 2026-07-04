@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ClassFinder — D&D 5e</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- ── VIEW 1: INPUT ─────────────────────────────────── -->
+    <section id="view-input" class="view active">
+      <header class="app-header">
+        <div class="logo">
+          <svg
+            class="logo-d20"
+            viewBox="0 0 44 46"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <polygon
+              points="22,2 42,36 2,36"
+              stroke="currentColor"
+              stroke-width="1.6"
+              fill="none"
+            />
+            <line
+              x1="2"
+              y1="36"
+              x2="22"
+              y2="16"
+              stroke="currentColor"
+              stroke-width="1"
+            />
+            <line
+              x1="42"
+              y1="36"
+              x2="22"
+              y2="16"
+              stroke="currentColor"
+              stroke-width="1"
+            />
+            <line
+              x1="11"
+              y1="25"
+              x2="33"
+              y2="25"
+              stroke="currentColor"
+              stroke-width="1"
+            />
+            <line
+              x1="11"
+              y1="25"
+              x2="22"
+              y2="36"
+              stroke="currentColor"
+              stroke-width="1"
+            />
+            <line
+              x1="33"
+              y1="25"
+              x2="22"
+              y2="36"
+              stroke="currentColor"
+              stroke-width="1"
+            />
+            <text
+              x="22"
+              y="33"
+              text-anchor="middle"
+              font-size="9"
+              font-family="Cinzel,serif"
+              fill="currentColor"
+            >
+              20
+            </text>
+          </svg>
+          <span class="logo-name">ClassFinder</span>
+        </div>
+        <span class="logo-tag">D&amp;D 5e · Semantic AI</span>
+      </header>
+
+      <main class="input-main">
+        <div class="hero">
+          <h1 class="hero-title">
+            Describe your<br /><span class="accent-gold">adventurer.</span>
+          </h1>
+          <p class="hero-sub">
+            Tell the AI who your character is. It reads your story and finds the
+            class that fits — beyond archetypes and tropes.
+          </p>
+        </div>
+
+        <form id="char-form" novalidate>
+          <div class="form-row">
+            <div class="field">
+              <label for="char-name">Name</label>
+              <input
+                type="text"
+                id="char-name"
+                placeholder="Aldric the Bold"
+                autocomplete="off"
+              />
+            </div>
+            <div class="field">
+              <label for="char-race">Race</label>
+              <input
+                type="text"
+                id="char-race"
+                placeholder="Human, Elf, Dwarf…"
+                autocomplete="off"
+              />
+            </div>
+            <div class="field">
+              <label for="char-bg"
+                >Background <span class="label-opt">optional</span></label
+              >
+              <input
+                type="text"
+                id="char-bg"
+                placeholder="Soldier, Sage, Outlander…"
+                autocomplete="off"
+              />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="char-story">Your story</label>
+            <div class="story-input-wrapper">
+              <textarea
+                id="char-story"
+                rows="6"
+                maxlength="350"
+                placeholder="A young warrior in worn silver armor who fights with a sword and unknowingly talks to minor spirits of light disguised as bugs, who protect him out of pity…"
+              ></textarea>
+
+              <div id="llm-warning" class="llm-warning-badge">
+                You're out of max. symbols for LLM
+              </div>
+
+              <span id="char-counter">0 / 350</span>
+            </div>
+            <span class="field-hint"
+              >Focus on exact abilities, combat style, and magical traits. Heavy
+              narrative details might obscure the mechanical match.</span
+            >
+          </div>
+
+          <div class="form-footer">
+            <button type="submit" class="btn-primary" id="analyze-btn">
+              <span class="btn-label">Analyze</span>
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                <path
+                  d="M3 8h10M9 4l4 4-4 4"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+        </form>
+      </main>
+    </section>
+
+    <!-- ── VIEW 2: LOADING ───────────────────────────────── -->
+    <section id="view-loading" class="view">
+      <div class="loading-wrap">
+        <div class="loading-orb">
+          <svg
+            class="orb-svg"
+            viewBox="0 0 80 80"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              cx="40"
+              cy="40"
+              r="36"
+              stroke="url(#og)"
+              stroke-width="1.2"
+              opacity="0.5"
+            />
+            <polygon
+              points="40,8 68,60 12,60"
+              stroke="url(#og)"
+              stroke-width="1.5"
+              fill="none"
+            />
+            <line
+              x1="12"
+              y1="60"
+              x2="40"
+              y2="36"
+              stroke="url(#og)"
+              stroke-width="1"
+            />
+            <line
+              x1="68"
+              y1="60"
+              x2="40"
+              y2="36"
+              stroke="url(#og)"
+              stroke-width="1"
+            />
+            <line
+              x1="24"
+              y1="47"
+              x2="56"
+              y2="47"
+              stroke="url(#og)"
+              stroke-width="1"
+            />
+            <line
+              x1="24"
+              y1="47"
+              x2="40"
+              y2="60"
+              stroke="url(#og)"
+              stroke-width="1"
+            />
+            <line
+              x1="56"
+              y1="47"
+              x2="40"
+              y2="60"
+              stroke="url(#og)"
+              stroke-width="1"
+            />
+            <defs>
+              <linearGradient
+                id="og"
+                x1="0"
+                y1="0"
+                x2="80"
+                y2="80"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop stop-color="#7B5CF5" />
+                <stop offset="1" stop-color="#C9A84C" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+
+        <div class="loading-steps">
+          <div class="loading-step" data-step="1">
+            <span class="step-dot"></span>Reading your story…
+          </div>
+          <div class="loading-step" data-step="2">
+            <span class="step-dot"></span>Matching personality traits…
+          </div>
+          <div class="loading-step" data-step="3">
+            <span class="step-dot"></span>Comparing class archetypes…
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── VIEW 3: RESULTS ───────────────────────────────── -->
+    <section id="view-results" class="view">
+      <div class="view-topbar no-print">
+        <button class="btn-ghost" id="back-from-results">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M13 8H3M7 4L3 8l4 4"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          Start over
+        </button>
+      </div>
+
+      <div class="results-wrap">
+        <div class="section-eyebrow accent-gold-text">Best match</div>
+        <div id="best-card"></div>
+
+        <div class="section-eyebrow" style="margin-top: 44px">
+          Other possible classes
+        </div>
+        <div id="other-cards" class="other-grid"></div>
+      </div>
+    </section>
+
+    <!-- ── VIEW 4: CHARACTER SHEET ──────────────────────── -->
+    <section id="view-sheet" class="view">
+      <div class="view-topbar no-print">
+        <button class="btn-ghost" id="back-from-sheet">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M13 8H3M7 4L3 8l4 4"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          Results
+        </button>
+        <div class="export-row">
+          <button class="btn-secondary" onclick="window.print()">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+              <rect
+                x="3"
+                y="6"
+                width="10"
+                height="8"
+                rx="1"
+                stroke="currentColor"
+                stroke-width="1.4"
+              />
+              <path d="M5 6V3h6v3" stroke="currentColor" stroke-width="1.4" />
+              <circle cx="12" cy="9.5" r=".75" fill="currentColor" />
+            </svg>
+            Print
+          </button>
+          <button class="btn-secondary" onclick="window.print()">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M4 2h6l3 3v9H4V2z"
+                stroke="currentColor"
+                stroke-width="1.4"
+              />
+              <path d="M10 2v4h4" stroke="currentColor" stroke-width="1.4" />
+              <path
+                d="M6 9h4M6 11h3"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+              />
+            </svg>
+            Save as PDF
+          </button>
+        </div>
+      </div>
+
+      <div class="sheet-paper" id="sheet-content">
+        <!-- filled by app.js -->
+      </div>
+    </section>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
