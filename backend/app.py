@@ -88,15 +88,22 @@ POWER_SOURCE_KEYWORDS = {
     "temporal": (["time", "chrono", "temporal", "clock", "timeline", "past", "future", "age"], "Control over the flow of time")
 }
 
+def _has_word(text: str, word: str) -> bool:
+    """Word-boundary safe match — 'star' не знайде 'artisan' чи 'started'."""
+    return bool(re.search(rf'\b{re.escape(word)}\b', text))
+
 def classify_combat(text_for_tags: str):
-    matched_styles = [key for key, words in COMBAT_STYLE_KEYWORDS.items() if any(w in text_for_tags for w in words)]
-    if not matched_styles: 
+    matched_styles = [
+        key for key, words in COMBAT_STYLE_KEYWORDS.items()
+        if any(_has_word(text_for_tags, w) for w in words)
+    ]
+    if not matched_styles:
         return [], ""
     return matched_styles, "Combat Style: " + " + ".join([STYLE_LABELS[s] for s in matched_styles])
 
 def classify_power_source(text_for_tags: str):
     for key, (words, phrase) in POWER_SOURCE_KEYWORDS.items():
-        if any(w in text_for_tags for w in words): 
+        if any(_has_word(text_for_tags, w) for w in words):
             return key, phrase
     return None, ""
 
@@ -125,7 +132,6 @@ async def analyze_character(data: UserStory):
         for word in words:
             mechanical_vocabulary.update(word.lower().split())
     
-    # Базові класи D&D як безумовний VIP-пріоритет
     dnd_nouns = [
         "warrior", "knight", "mage", "cleric", "rogue", "paladin", "ranger", "druid", 
         "bard", "monk", "sorcerer", "warlock", "wizard", "fighter", "artificer",
@@ -137,8 +143,8 @@ async def analyze_character(data: UserStory):
 
     all_words = re.findall(r'\b\w+\b', user_text.lower())
     
-    high_priority = []  # Сюди потраплять: sword, armor, spirit, warrior...
-    low_priority = []   # Сюди відсіється шлак: garden, girl, village...
+    high_priority = []  
+    low_priority = []   
     seen_words = set()
 
     for w in all_words:
@@ -146,7 +152,6 @@ async def analyze_character(data: UserStory):
             continue
         seen_words.add(w)
         
-        # Легкий стемінг (відкидаємо закінчення множини 's', щоб "spirits" збіглося з "spirit")
         stemmed = w.rstrip('s')
         
         if w in mechanical_vocabulary or stemmed in mechanical_vocabulary:
@@ -154,19 +159,65 @@ async def analyze_character(data: UserStory):
         else:
             low_priority.append(w)
 
-    # Збираємо щільне ядро для пошуку — максимум 4 найсильніших слова
-    clean_keywords = high_priority[:4]
-    
-    # Якщо VIP-слів замало (дуже короткий опис), добираємо з художньої частини
-    if len(clean_keywords) < 3:
-        remaining = 3 - len(clean_keywords)
-        clean_keywords.extend(low_priority[:remaining])
+    clean_keywords = high_priority[:2]
+    if len(clean_keywords) < 2:
+        clean_keywords.extend(low_priority[:2 - len(clean_keywords)])
 
-    keywords_str = " ".join(clean_keywords) if clean_keywords else "custom"
-    
-    # Ідеально збалансований запит без води
+    user_text_lower = user_text.lower()
+    pre_power_key, _ = classify_power_source(user_text_lower)
+    pre_styles, _    = classify_combat(user_text_lower)
+
+    POWER_SEARCH_TERMS = {
+        "temporal":  ["chrono", "time"],
+        "occult":    ["hex", "curse"],
+        "runic":     ["rune", "sigil"],
+        "blood":     ["blood", "vitality"],
+        "psionic":   ["psionic", "mind"],
+        "cosmic":    ["void", "cosmic"],
+        "spirit":    ["spirit", "phantom"],
+        "draconic":  ["dragon", "draconic"],
+        "divine":    ["divine", "holy"],
+        "nature":    ["nature", "druid"],
+        "ki":        ["ki", "monk"],
+        "study":     ["wizard", "arcane"],
+        "pact":      ["warlock", "patron"],
+        "martial":   ["fighter", "warrior"],
+        "death":     ["undead", "necromancy"],
+        "death":     ["undead", "necromancy"],
+    }
+
+    STYLE_SEARCH_TERMS = {
+        "melee":    "melee",
+        "ranged":   "ranged",
+        "magic":    "spellcaster",
+        "support":  "support",
+        "assassin": "assassin",
+        "tank":     "tank",
+        "summoner": "summoner",
+        "tinkerer": "alchemist",
+        "gambler":  "gambler",
+    }
+
+    power_terms = []
+    if pre_power_key and pre_power_key in POWER_SEARCH_TERMS:
+        power_terms = POWER_SEARCH_TERMS[pre_power_key][:2]
+
+    style_term = ""
+    for s in pre_styles:
+        candidate = STYLE_SEARCH_TERMS.get(s, "")
+        if candidate and candidate not in power_terms:
+            style_term = candidate
+            break
+
+    query_parts = clean_keywords + power_terms
+    if style_term:
+        query_parts.append(style_term)
+
+    keywords_str = " ".join(dict.fromkeys(query_parts)) 
     search_query = f"{keywords_str} 5e homebrew class"
-    # ===================================================
+
+    focused_query = keywords_str if keywords_str else user_text[:200]
+    focused_vector = model.encode([focused_query])
 
     def run_search(query: str):
         last_error = None
@@ -216,7 +267,6 @@ async def analyze_character(data: UserStory):
         snippets = [item['snippet'] for item in pool_items]
         vectors = model.encode(snippets)
 
-        TRUSTED_DOMAINS = ["dandwiki.com", "reddit.com/r/unearthedarcana", "reddit.com/r/dndhomebrew"]
         DND_STRUCTURAL_TOKENS = [
             "hit points", "proficiency", "features", "subclass", "spellcasting", 
             "hit dice", "archetype", "level", "spell slots", "cantrip"
@@ -224,20 +274,25 @@ async def analyze_character(data: UserStory):
 
         scored = []
         for i, item in enumerate(pool_items):
-            base_similarity = float(cosine_similarity(user_vector, [vectors[i]])[0][0])
+            match_vector = focused_vector if is_web else user_vector
+            base_similarity = float(cosine_similarity(match_vector, [vectors[i]])[0][0])
             similarity = base_similarity
             text_for_tags = (item['title'] + " " + item['snippet']).lower()
 
             if is_web:
                 structural_matches = sum(1 for token in DND_STRUCTURAL_TOKENS if token in text_for_tags)
                 if structural_matches == 0:
-                    similarity -= 0.25
+                    similarity -= 0.08   
                 elif structural_matches >= 2:
                     similarity += 0.05
 
             link_lower = item['link'].lower()
-            if any(domain in link_lower for domain in TRUSTED_DOMAINS):
+            if "dandwiki.com" in link_lower:
+                similarity += 0.18  
+            elif any(domain in link_lower for domain in ["reddit.com/r/unearthedarcana", "reddit.com/r/dndhomebrew"]):
                 similarity += 0.10
+            elif any(domain in link_lower for domain in ["homebrewery.naturalcrit.com", "gmbinder.com"]):
+                similarity += 0.08
 
             tags = []
             if any(w in text_for_tags for w in ["magic", "spell", "wizard", "caster", "spirit", "light"]): tags.append("magic")
@@ -271,7 +326,7 @@ async def analyze_character(data: UserStory):
 
     cleaned_web_pool = []
     for match in scored_web:
-        if match['score'] < 0.30:
+        if match['score'] < 0.22: 
             continue
 
         title_lower = match['class_name'].lower()
